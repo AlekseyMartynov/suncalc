@@ -116,13 +116,20 @@ function julianCycle(d, lw) { return Math.round(d - J0 - lw / (2 * PI)); }
 function approxTransit(Ht, lw, n) { return J0 + (Ht + lw) / (2 * PI) + n; }
 function solarTransitJ(ds, M, L)  { return J2000 + ds + 0.0053 * sin(M) - 0.0069 * sin(2 * L); }
 
-function hourAngle(h, phi, d) { return acos((sin(h) - sin(phi) * sin(d)) / (cos(phi) * cos(d))); }
+function hourAngle(h, phi, d) { 
+    var arg = (sin(h) - sin(phi) * sin(d)) / (cos(phi) * cos(d));
+    if(arg > 1)  return -Infinity;    
+    if(arg < -1) return  Infinity;
+    return acos(arg); 
+}
 
 // returns set time for the given sun altitude
 function getSetJ(h, lw, phi, dec, n, M, L) {
+    var w = hourAngle(h, phi, dec);
+    if(!isFinite(w))
+        return w;
 
-    var w = hourAngle(h, phi, dec),
-        a = approxTransit(w, lw, n);
+    var a = approxTransit(w, lw, n);
     return solarTransitJ(a, M, L);
 }
 
@@ -156,14 +163,42 @@ SunCalc.getTimes = function (date, lat, lng) {
         time = times[i];
 
         Jset = getSetJ(time[0] * rad, lw, phi, dec, n, M, L);
+
+        if(!isFinite(Jset))
+            Jnoon = 0;
+
         Jrise = Jnoon - (Jset - Jnoon);
 
-        result[time[1]] = fromJulian(Jrise);
-        result[time[2]] = fromJulian(Jset);
+        result[time[1]] = fromJulianConstrained(date, Jrise);
+        result[time[2]] = fromJulianConstrained(date, Jset);
     }
 
     return result;
 };
+
+function fromJulianConstrained(date, j) {
+    var result,
+        min, 
+        max;
+
+    min = new Date(date.getTime());
+    min.setHours(0, 0, 0, 0);
+
+    max = new Date(min.getTime() + dayMs);
+    
+    if(!isFinite(j))
+        return j < 0 ? min : max;
+
+    result = fromJulian(j);
+
+    if(result < min)
+        return min;
+
+    if(result > max)
+        return max;
+
+    return result;
+}
 
 
 // export as AMD module / Node module / browser variable
