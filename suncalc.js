@@ -137,6 +137,8 @@ function getSetJ(h, lw, phi, dec, n, M, L) {
 // calculates sun times for a given date and latitude/longitude
 
 SunCalc.getTimes = function (date, lat, lng) {
+    // https://github.com/mourner/suncalc/issues/11#issuecomment-34809666
+    date = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
 
     var lw = rad * -lng,
         phi = rad * lat,
